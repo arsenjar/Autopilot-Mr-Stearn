@@ -103,36 +103,31 @@ def get_lane_center_from_mask(mask):
 def detect_blue_stop_line(frame):
     h, w, _ = frame.shape
 
-    # Define ROI
-    y1, y2 = int(h * 0.70), int(h * 0.95)
-    x1, x2 = int(w * 0.30), int(w * 0.70)
+    # Центральная нижняя зона
+    y1 = int(h * 0.70)
+    y2 = int(h * 0.95)
+    x1 = int(w * 0.30)
+    x2 = int(w * 0.70)
+
     roi = frame[y1:y2, x1:x2]
-    
-    # Color Conversion & Filtering
     hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-    lower_blue = np.array([100, 120, 70])
-    upper_blue = np.array([130, 255, 255])
+
+    # Blue line range
+    lower_blue = np.array([100, 120, 70], dtype=np.uint8)
+    upper_blue = np.array([130, 255, 255], dtype=np.uint8)
+
+    # Mask
     mask = cv2.inRange(hsv, lower_blue, upper_blue)
 
-    # Clean up noise
     kernel = np.ones((5, 5), np.uint8)
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
 
-    # Find contours of blue objects
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
-    for cnt in contours:
-        area = cv2.contourArea(cnt)
-        if area > 500:  # Minimum size to ignore noise
-            x, y, w_obj, h_obj = cv2.boundingRect(cnt)
-            aspect_ratio = float(w_obj) / h_obj
-            
-            # A stop line MUST be wider than it is tall
-            # and should take up a decent portion of the ROI width
-            if aspect_ratio > 2.0 and w_obj > (roi.shape[1] * 0.5):
-                return True
+    blue_pixels = cv2.countNonZero(mask)
+    roi_area = mask.shape[0] * mask.shape[1]
+    blue_ratio = blue_pixels / roi_area
 
-    return False
+    return blue_ratio > 0.08
 
 
 def draw_blue_roi(frame):
