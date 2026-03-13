@@ -1,0 +1,6 @@
+opencv-contrib-python
+numpy
+scipy
+flask
+flask-cors
+requests
